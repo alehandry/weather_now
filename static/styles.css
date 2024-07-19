@@ -1,0 +1,157 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 1200px; /* Increased width to accommodate side-by-side layout */
+    margin: 0 auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+h1 {
+    text-align: center;
+    color: #4a90e2;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+}
+
+label {
+    font-size: 18px;
+}
+
+input[type="text"] {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button {
+    padding: 10px;
+    font-size: 16px;
+    background-color: #4a90e2;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #357abd;
+}
+
+.suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it appears above other elements */
+}
+
+.suggestion {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.suggestion:hover {
+    background-color: #f0f0f0;
+}
+
+.weather-map-container {
+    display: flex;
+    gap: 20px; /* Space between weather info and map */
+    margin-top: 20px;
+    justify-content: center;
+}
+
+.weather-info {
+    width: 400px; /* Fixed width for map */
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.weather-info h2 {
+    text-align: center;
+    color: #4a90e2;
+    margin-bottom: 20px;
+}
+
+.weather-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.weather-item {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.weather-label {
+    font-weight: bold;
+    color: #333;
+}
+
+.weather-value {
+    color: #555;
+}
+
+#map {
+    width: 800px; /* Fixed width for map */
+    height: 400px;
+    border: 1px solid #ddd;
+}
+
+#hourly-chart {
+    margin-top: 20px;
+    height: 400px;
+}
+
+#hourly-table {
+    margin-top: 20px;
+}
+
+#hourly-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#hourly-table th, #hourly-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+#hourly-table th {
+    background-color: #f2f2f2;
+    text-align: center;
+}
+#hourly-table tr {
+    text-align: center;
+}
+

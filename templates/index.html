@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Прогноз Погоды</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        async function fetchSuggestions(query) {
+            try {
+                const response = await fetch(`/search?query=${query}`);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Ошибка при получении подсказок:', error);
+                return [];
+            }
+        }
+
+        function debounce(func, delay) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('city');
+        const suggestions = document.getElementById('suggestions');
+        const mapElement = document.getElementById('map');
+        const hourlyTableElement = document.getElementById('hourly-table');
+        const weatherInfo = document.querySelector('.weather-info');
+
+        // Инициализация карты без контролов приближения и отдаления
+        let map = L.map(mapElement, { zoomControl: false }).setView([0, 0], 13);
+        let marker = null;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        function updateMap(lat, lon, cityName) {
+            if (marker) {
+                marker.setLatLng([lat, lon]);
+                marker.setPopupContent(`<b>${cityName}</b><br>Координаты: ${lat}, ${lon}`);
+            } else {
+                marker = L.marker([lat, lon]).addTo(map);
+                marker.bindPopup(`<b>${cityName}</b><br>Координаты: ${lat}, ${lon}`).openPopup();
+            }
+            map.setView([lat, lon], 13);
+        }
+
+        function saveSelectedCity(lat, lon, cityName) {
+            localStorage.setItem('selectedCity', JSON.stringify({ lat, lon, cityName }));
+        }
+
+        function loadSelectedCity() {
+            const savedCity = localStorage.getItem('selectedCity');
+            if (savedCity) {
+                const { lat, lon, cityName } = JSON.parse(savedCity);
+                updateMap(lat, lon, cityName);
+            }
+        }
+
+        // Загрузка сохраненного города при загрузке страницы
+        loadSelectedCity();
+
+        input.addEventListener('input', debounce(async () => {
+            const query = input.value;
+            if (query.length > 2) {
+                const cities = await fetchSuggestions(query);
+                suggestions.innerHTML = cities.map(city => `
+                    <div class="suggestion" data-lat="${city.latitude}" data-lon="${city.longitude}" data-city="${city.name}">
+                        <strong>${city.name}</strong><br>
+                        Координаты: ${city.latitude}, ${city.longitude}
+                    </div>
+                `).join('');
+            } else {
+                suggestions.innerHTML = '';
+            }
+        }, 300));
+
+        document.addEventListener('click', (event) => {
+            if (!suggestions.contains(event.target)) {
+                suggestions.innerHTML = '';
+            }
+        });
+
+        suggestions.addEventListener('click', async (event) => {
+            if (event.target.classList.contains('suggestion')) {
+                const lat = event.target.dataset.lat;
+                const lon = event.target.dataset.lon;
+                const cityName = event.target.dataset.city;
+
+                // Обновляем поле ввода с названием города
+                input.value = cityName;
+
+                // Обновляем карту и сохраняем данные
+                updateMap(lat, lon, cityName);
+                saveSelectedCity(lat, lon, cityName);
+
+                // Обновляем таблицу и отображаем погоду
+                const response = await fetch(`/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        'city': cityName,
+                        'lat': lat,
+                        'lon': lon
+                    })
+                });
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(await response.text(), 'text/html');
+                const tempData = JSON.parse(doc.getElementById('hourly-data').textContent);
+
+                if (tempData) {
+                    // Обновляем таблицу
+                    const rows = tempData.time.map((time, index) => `
+                        <tr>
+                            <td>${time}</td>
+                            <td>${tempData.temperature_2m[index]} °C</td>
+                            <td>${tempData.relative_humidity_2m[index]} %</td>
+                            <td>${tempData.pressure_msl[index]} mbar</td>
+                            <td>${tempData.wind_speed_10m[index]} m/s</td>
+                        </tr>
+                    `).join('');
+                    hourlyTableElement.innerHTML = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Время</th>
+                                    <th>Температура</th>
+                                    <th>Влажность</th>
+                                    <th>Скорость ветра</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    `;
+                }
+            }
+        });
+    });
+    </script>
+</head>
+<body>
+<div class="container">
+    <h1>Прогноз Погоды</h1>
+    <form method="post">
+        <label for="city">Введите название города:</label>
+        <input type="text" id="city" name="city" autocomplete="off">
+        <button type="submit">Поиск</button>
+        <div id="suggestions" class="suggestions"></div>
+    </form>
+    <div class="weather-map-container">
+        {% if weather_data %}
+        <div class="weather-info">
+            <h2>Текущая погода</h2>
+            <div class="weather-details">
+                <div class="weather-item">
+                    <span class="weather-label">Температура:</span>
+                    <span class="weather-value">{{ weather_data.temperature }}°C</span>
+                </div>
+                <div class="weather-item">
+                    <span class="weather-label">Влажность:</span>
+                    <span class="weather-value">{{ weather_data.relative_humidity }}%</span>
+                </div>
+                <div class="weather-item">
+                    <span class="weather-label">Скорость ветра:</span>
+                    <span class="weather-value">{{ weather_data.windspeed }} Км/ч</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div id="map"></div>
+    </div>
+    {% if hourly_weather_data %}
+    <div id="hourly-table">
+        <table>
+            <thead>
+            <tr>
+                <th>Дата и Время</th>
+                <th>Температура</th>
+                <th>Влажность</th>
+                <th>Скорость ветра</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for i in range(hourly_weather_data['time'] | length) %}
+            <tr>
+                <td>{{ hourly_weather_data['time'][i] }}</td>
+                <td>{{ hourly_weather_data['temperature_2m'][i] }} °C</td>
+                <td>{{ hourly_weather_data['relative_humidity_2m'][i] }} %</td>
+                <td>{{ hourly_weather_data['wind_speed_10m'][i] }} Км/ч</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>
